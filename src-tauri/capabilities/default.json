@@ -1,0 +1,15 @@
+{
+  "identifier": "default",
+  "description": "Local window and file picker access only",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://github.com/simplifiedDigital/everyday/releases/*" }
+      ]
+    }
+  ]
+}
