@@ -30,3 +30,13 @@ The footer uses the package build version, then reads Tauri's native installed v
 Six browser checks cover equal, newer and older release versions, offline failure followed by retry, no published releases, and malformed release metadata. The update comparison includes 0.1.10 versus 0.1.2 to catch lexicographic comparisons. Release metadata is mocked in these checks. The home still makes no external requests. Screenshot: `.cache/screenshots/version.png`.
 
 All 11 interface tests passed. The rebuilt Windows app separately returned native version 0.1.2 and successfully checked the live public GitHub endpoint through its production security policy. The new repository has no published releases yet, which the panel accurately reports. Run `node scripts/smoke-version.mjs` after a Windows build to repeat this check; screenshot: `.cache/screenshots/desktop-version.png`.
+
+## Unicode input regression in 0.1.3
+
+The installed worker reproduced `speech-text-UnicodeEncodeError` with raw UTF-8 JSON containing `“Hello from Everyday.” Café, naïve, and a smile 😊.`. The diagnostic stack ended at `EspeakWrapper.text_to_phonemes`, where UTF-8 encoding rejected surrogate characters introduced by the input decoding. Frozen Python's Windows standard input did not honor the launcher's `PYTHONIOENCODING` environment variable. Earlier subprocess checks used `json.dumps` with ASCII escapes, which masked this transport bug.
+
+The worker now explicitly configures its standard streams as UTF-8 before reading its request. It does not remove or replace characters in user text. All 20 Python tests passed, including exact round trips of smart quotes, accented text, currency symbols, Hindi, Chinese and supplementary-plane characters through simulated cp1252, cp932 and ASCII stdin defaults. Packaged smoke checks now send raw UTF-8 bytes like native IPC and include both Unicode speech and a Unicode filename. The native speech smoke text includes smart quotes, accents and emoji.
+
+The rebuilt frozen worker passed those raw-UTF-8 checks: Unicode filenames worked for image conversion and ZIP creation, and the smart-quote speech sample completed. Whisper transcription confirmed words at both ends of the recording; MP3 conversion also passed.
+
+The actual Windows desktop app reported native version 0.1.3, generated speech from the same Unicode input through native IPC, and loaded the WAV in its audio player with a finite duration greater than one second. The test confirmed that the launched worker matched the newly bundled worker before running.

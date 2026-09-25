@@ -213,5 +213,28 @@ class ToolsTest(unittest.TestCase):
         self.assertNotIn(str(self.root), saved)
         self.assertTrue(json.loads(saved)['frames'])
 
+    def test_worker_reads_utf8_even_with_legacy_windows_stdio(self):
+        text = '“Hello.” Café, naïve, ₹500, नमस्ते, 中文, 😊 and 𐐀.'
+        request = {'tool': 'audio-speak', 'options': {'text': text}, 'files': [str(self.root / '“Résumé” 文書.pdf')]}
+        payload = (json.dumps(request, ensure_ascii=False) + '\n').encode('utf-8')
+        for encoding in ['cp1252', 'cp932', 'ascii']:
+            with self.subTest(encoding=encoding):
+                incoming = io.TextIOWrapper(io.BytesIO(payload), encoding=encoding, errors='surrogateescape')
+                outgoing = io.TextIOWrapper(io.BytesIO(), encoding=encoding)
+                errors = io.TextIOWrapper(io.BytesIO(), encoding=encoding)
+                def process(decoded):
+                    self.assertEqual(decoded, request)  # Never strip or replace the user's characters.
+                    self.assertEqual(incoming.encoding, 'utf-8')
+                    self.assertEqual(outgoing.encoding, 'utf-8')
+                    self.assertEqual(errors.encoding, 'utf-8')
+                    return {'text': decoded['options']['text']}
+                worker.PROTOCOL = io.StringIO()
+                with patch('sys.stdin', incoming), patch('sys.stdout', outgoing), patch('sys.stderr', errors), patch.object(worker, 'dispatch', side_effect=process):
+                    worker.main()
+                result = json.loads(worker.PROTOCOL.getvalue())
+                self.assertEqual(result['event'], 'result')
+                self.assertEqual(result['text'], text)
+                incoming.close(); outgoing.close(); errors.close()
+
 
 if __name__ == '__main__': unittest.main()

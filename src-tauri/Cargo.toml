@@ -1,6 +1,6 @@
 [package]
 name = "everyday"
-version = "0.1.2"
+version = "0.1.3"
 description = "Simple, private tools for everyday tasks"
 edition = "2021"
 

@@ -632,6 +632,13 @@ def speech_failure(error):
 
 def main():
     try:
+        # Both launchers send UTF-8 JSON. Frozen Python can ignore
+        # PYTHONIOENCODING and otherwise decode stdin using the Windows locale.
+        # That corrupts non-ASCII text (and can introduce surrogate characters).
+        # Configure the streams inside the worker, before reading any input.
+        for stream, errors in [(sys.stdin, "strict"), (sys.stdout, "backslashreplace"), (sys.stderr, "backslashreplace")]:
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors=errors)
         req = json.loads(sys.stdin.readline())
         with contextlib.redirect_stdout(sys.stderr):
             result = dispatch(req)

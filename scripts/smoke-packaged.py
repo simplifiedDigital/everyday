@@ -13,8 +13,11 @@ exe = root / 'src-tauri' / 'engine' / ('everyday-engine.exe' if os.name == 'nt' 
 models = root / '.cache/models'
 def run(tool, files=None, **options):
     req = {'tool':tool, 'files': [str(p) for p in files or []], 'options':options, 'output_dir':str(root/'.cache/packaged-check'), 'model_dir':str(models)}
-    p = subprocess.run([str(exe)], input=json.dumps(req)+'\n', capture_output=True, encoding='utf-8', timeout=120)
-    events = [json.loads(line) for line in p.stdout.splitlines() if line.startswith('{')]
+    # Native IPC sends raw UTF-8, not JSON's default ASCII escapes. Exercising
+    # the same bytes catches frozen Python's Windows stdio encoding regressions.
+    payload = (json.dumps(req, ensure_ascii=False)+'\n').encode('utf-8')
+    p = subprocess.run([str(exe)], input=payload, capture_output=True, timeout=120)
+    events = [json.loads(line) for line in p.stdout.decode('utf-8').splitlines() if line.startswith('{')]
     assert events and events[-1]['event'] == 'result', (p.stdout, p.stderr)
     print(tool, 'PASS'); return events[-1]
 run('password', kind='memorable')
@@ -27,11 +30,11 @@ run('pdf-split', files=[pdf])
 run('pdf-markdown', files=[pdf])
 locked = run('pdf-protect', files=[pdf], newPassword='test-password')['files'][0]
 run('pdf-unlock', files=[locked], password='test-password')
-photo = root / '.cache/packaged-photo.png'; Image.new('RGB', (100,100), 'green').save(photo)
+photo = root / '.cache/packaged-“Café”—文書.png'; Image.new('RGB', (100,100), 'green').save(photo)
 run('image-convert', files=[photo], format='webp')
 run('file-zip', files=[photo, pdf])
 if '--files-only' not in sys.argv:
-    audio = run('audio-speak', text='Hello from Everyday.\n---\n•\n\u200b\nYour files stay on your computer.')
+    audio = run('audio-speak', text='“Hello from Everyday.” Café, naïve, and a smile 😊.\n---\n•\n\u200b\nYour files stay on your computer.')
     text = run('audio-transcribe', files=audio['files'])
     assert 'hello' in text['text'].lower()
     assert 'computer' in text['text'].lower()

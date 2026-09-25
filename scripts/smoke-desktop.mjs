@@ -33,6 +33,11 @@ try {
   assert(browser, "Desktop WebView did not start");
   const page = browser.contexts()[0].pages()[0];
   await page.getByRole("heading", { name: "Little tasks, done." }).waitFor();
+  if (!process.env.EVERYDAY_EXE) {
+    const expected = JSON.parse(readFileSync("package.json", "utf8")).version;
+    assert.equal(await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("plugin:app|version")), expected);
+    await page.getByRole("button", { name: `Everyday v${expected}. Version and updates`, exact: true }).waitFor();
+  }
   await page
     .getByRole("navigation")
     .getByRole("button", { name: "Passwords" })
@@ -60,7 +65,7 @@ try {
   assert(result.files[0].endsWith(".xlsx"));
   await page.getByRole("navigation").getByRole("button", { name: "Audio", exact: true }).click();
   await page.getByRole("button", { name: /Text to speech/ }).click();
-  await page.getByRole("textbox", { name: "Text to read aloud" }).fill("Hello from Everyday.\n---\n•\n\u200b\nYour files stay on your computer.");
+  await page.getByRole("textbox", { name: "Text to read aloud" }).fill("“Hello from Everyday.” Café, naïve, and a smile 😊.\n---\n•\n\u200b\nYour files stay on your computer.");
   await page.getByRole("button", { name: "Read aloud", exact: true }).click();
   try {
     await page.getByRole("heading", { name: "All done." }).waitFor({ timeout: 120000 });
