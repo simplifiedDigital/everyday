@@ -19,7 +19,9 @@ if (process.argv[2] === "--check") {
   assert.equal(tauri.version, version);
   assert.equal(cargo.match(/version = "([^"]+)"/)[1], version);
   assert(
-    cargoLock.replace(/\r\n/g, "\n").includes(`name = "everyday"\nversion = "${version}"`),
+    cargoLock
+      .replace(/\r\n/g, "\n")
+      .includes(`name = "everyday"\nversion = "${version}"`),
     "Cargo.lock version is out of sync",
   );
   console.log(`Version ${version} is consistent across the app and installer.`);
